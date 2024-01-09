@@ -39,8 +39,8 @@
 #define STR2(x) #x
 #define STR(x) STR2(x)
 
-const float SCREEN_DEPTH = 1000.0f;
-const float SCREEN_NEAR = 0.02f;
+const float SCREEN_DEPTH = 2000.0f;
+const float SCREEN_NEAR = 0.04f;
 
 static void FatalError(const char* message)
 {
@@ -622,7 +622,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previnstance, LPSTR cmdline, in
                 rot_h += Input::state.mouse_delta_x * 0.01f;
                 rot_v += Input::state.mouse_delta_y * 0.01f;
 
-                constexpr float speed = 0.1f;
+                constexpr float speed = 3.0f;
                 if (Input::state.w) {
                     pos.z -= speed * -cosf(rot_h);
                     pos.x += speed * sinf(rot_h);
