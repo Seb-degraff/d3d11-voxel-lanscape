@@ -240,10 +240,12 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previnstance, LPSTR cmdline, in
 
     GeometryBuilder geom = {};
 
-    vec3_t a = vec3(0, 0, 0);
+    /*vec3_t a = vec3(0, 0, 0);
     vec3_t b = vec3(0, 0, 100);
     vec3_t c = vec3(100, 0, 100);
     vec3_t d = vec3(100, 0, 0);
+
+    geom.PushQuad(a, b, c, d, vec3(1.f,0.2f,0.2f));*/
 
     GeoGen::GenerateTerrain();
     GeoGen::Generate(&geom);
@@ -253,8 +255,9 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previnstance, LPSTR cmdline, in
         D3D11_BUFFER_DESC desc =
         {
             .ByteWidth = static_cast<UINT>(geom.vert.size() * sizeof(geom.vert[0])),
-            .Usage = D3D11_USAGE_IMMUTABLE,
+            .Usage = D3D11_USAGE_DYNAMIC,
             .BindFlags = D3D11_BIND_VERTEX_BUFFER,
+            .CPUAccessFlags = D3D10_CPU_ACCESS_WRITE,
         };
 
         D3D11_SUBRESOURCE_DATA initial = { .pSysMem = geom.vert.data()};
@@ -474,7 +477,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previnstance, LPSTR cmdline, in
         D3D11_RASTERIZER_DESC desc =
         {
             .FillMode = D3D11_FILL_SOLID,
-            .CullMode = D3D11_CULL_NONE,
+            .CullMode = D3D11_CULL_BACK,
         };
         device->CreateRasterizerState(&desc, &rasterizerState);
     }
@@ -592,6 +595,22 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previnstance, LPSTR cmdline, in
             float delta = (float)((double)(c2.QuadPart - c1.QuadPart) / freq.QuadPart);
             c1 = c2;
 
+            /*geom.ind.clear();
+            geom.vert.clear();
+
+            static float t = 0;
+            t += delta;
+            geom.PushQuad(a, b, c, d, vec3(0.2f + , 0.9f, 0.2f));*/
+
+            // Update vertex buffer
+            {
+                D3D11_MAPPED_SUBRESOURCE mapped_resource;
+                ZeroMemory(&mapped_resource, sizeof(D3D11_MAPPED_SUBRESOURCE));
+                context->Map(vbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
+                memcpy(mapped_resource.pData, geom.vert.data(), geom.vert.size() * sizeof(geom.vert[0]));
+                context->Unmap(vbuffer, 0);
+            }
+
             // output viewport covering all client area of window
             D3D11_VIEWPORT viewport =
             {
@@ -622,7 +641,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previnstance, LPSTR cmdline, in
                 rot_h += Input::state.mouse_delta_x * 0.01f;
                 rot_v += Input::state.mouse_delta_y * 0.01f;
 
-                constexpr float speed = 3.0f;
+                constexpr float speed = 0.2f;
                 if (Input::state.w) {
                     pos.z -= speed * -cosf(rot_h);
                     pos.x += speed * sinf(rot_h);

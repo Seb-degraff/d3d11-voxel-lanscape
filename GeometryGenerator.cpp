@@ -5,7 +5,7 @@
 
 namespace GeoGen
 {
-    constexpr int chunk_width = 128*12;
+    constexpr int chunk_width = 16;
     constexpr int chunk_height = 32;
 
     uint8_t cells[chunk_width * chunk_width * chunk_height];
@@ -33,7 +33,7 @@ namespace GeoGen
             for (int y = 0; y < chunk_height; y++) {
                 for (int x = 0; x < chunk_width; x++) {
                     float secondary_noise = +Noise::perlin2d(x, z, 0.11f, 1);
-                    float perlin = Noise::perlin2d(x + 100, z, 0.03f, 3) * chunk_height;
+                    float perlin = Noise::perlin2d(x + 9000, z, 0.03f, 3) * chunk_height;
                     perlin -= 10;
                     perlin += secondary_noise * 4;
                     if (y <= perlin) {
@@ -51,7 +51,6 @@ namespace GeoGen
         }
     }
 
-
     void Generate(GeometryBuilder* builder)
     {
         vec3_t grass_light = vec3(0.1f, 0.9f, 0.1f);
@@ -64,40 +63,42 @@ namespace GeoGen
             for (int y = 0; y < chunk_height; y++) {
                 for (int x = 0; x < chunk_width; x++) {
                     uint8_t cell_type = cell_at(x, y, z);
-                    if (cell_type != 0) {
-                        vec3_t side_col = {};
-                        vec3_t top_col = {};
-                        top_col = (x & 1) == (z & 1) ? grass_light : grass_dark;
-                        switch (cell_type) {
-                            case 1: side_col = dirt_col; break;
-                            case 2: side_col = stone_col; top_col = stone_col; break;
-                            case 3: side_col = water_col; top_col = water_col; break;
-                        }
+                    if (cell_type == 0) {
+                        continue;
+                    }
 
-                        // x-
-                        if (cell_at(x - 1, y, z) == 0) {
-                            builder->PushQuad(vec3(x, y, z), vec3(x, y, z + 1), vec3(x, y + 1, z + 1), vec3(x, y + 1, z), vec3_scale(side_col, 0.6f));
-                        }
-                        // x+
-                        if (cell_at(x + 1, y, z) == 0) {
-                            builder->PushQuad(vec3(x + 1, y, z), vec3(x + 1, y + 1, z), vec3(x + 1, y + 1, z + 1), vec3(x + 1, y, z + 1), vec3_scale(side_col, 0.9f));
-                        }
-                        // z+
-                        if (cell_at(x, y, z + 1) == 0) {
-                            builder->PushQuad(vec3(x, y, z + 1), vec3(x + 1, y, z + 1), vec3(x + 1, y + 1, z + 1), vec3(x, y + 1, z + 1), side_col);
-                        }
-                        // z-
-                        if (cell_at(x, y, z - 1) == 0) {
-                            builder->PushQuad(vec3(x, y, z), vec3(x, y + 1, z), vec3(x + 1, y + 1, z), vec3(x + 1, y, z), vec3_scale(side_col, 0.5f));
-                        }
-                        // y+
-                        if (cell_at(x, y + 1, z) == 0) {
-                            builder->PushQuad(vec3(x, y + 1, z), vec3(x, y + 1, z + 1), vec3(x + 1, y + 1, z + 1), vec3(x + 1, y + 1, z), top_col);
-                        }
-                        // y-
-                        if (cell_at(x, y - 1, z) == 0) {
-                            builder->PushQuad(vec3(x, y, z), vec3(x + 1, y, z), vec3(x + 1, y, z + 1), vec3(x, y, z + 1), side_col);
-                        }
+                    vec3_t side_col = {};
+                    vec3_t top_col = {};
+                    top_col = (x & 1) == (z & 1) ? grass_light : grass_dark;
+                    switch (cell_type) {
+                        case 1: side_col = dirt_col; break;
+                        case 2: side_col = stone_col; top_col = stone_col; break;
+                        case 3: side_col = water_col; top_col = water_col; break;
+                    }
+
+                    // x-
+                    if (cell_at(x - 1, y, z) == 0) {
+                        builder->PushQuad(vec3(x, y, z), vec3(x, y, z + 1), vec3(x, y + 1, z + 1), vec3(x, y + 1, z), vec3_scale(side_col, 0.6f));
+                    }
+                    // x+
+                    if (cell_at(x + 1, y, z) == 0) {
+                        builder->PushQuad(vec3(x + 1, y, z), vec3(x + 1, y + 1, z), vec3(x + 1, y + 1, z + 1), vec3(x + 1, y, z + 1), vec3_scale(side_col, 0.9f));
+                    }
+                    // z+
+                    if (cell_at(x, y, z + 1) == 0) {
+                        builder->PushQuad(vec3(x, y, z + 1), vec3(x + 1, y, z + 1), vec3(x + 1, y + 1, z + 1), vec3(x, y + 1, z + 1), side_col);
+                    }
+                    // z-
+                    if (cell_at(x, y, z - 1) == 0) {
+                        builder->PushQuad(vec3(x, y, z), vec3(x, y + 1, z), vec3(x + 1, y + 1, z), vec3(x + 1, y, z), vec3_scale(side_col, 0.5f));
+                    }
+                    // y+
+                    if (cell_at(x, y + 1, z) == 0) {
+                        builder->PushQuad(vec3(x, y + 1, z), vec3(x, y + 1, z + 1), vec3(x + 1, y + 1, z + 1), vec3(x + 1, y + 1, z), top_col);
+                    }
+                    // y-
+                    if (cell_at(x, y - 1, z) == 0) {
+                        builder->PushQuad(vec3(x, y, z), vec3(x + 1, y, z), vec3(x + 1, y, z + 1), vec3(x, y, z + 1), side_col);
                     }
                 }
             }
