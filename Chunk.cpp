@@ -1,11 +1,11 @@
 #include "Chunk.h"
 #include <assert.h>
-#include "GeometryGenerator.h"
+#include "Map.h"
 
 Chunk::Chunk(int chunk_x, int chunk_y)
 {
     chunk_x_ = chunk_x;
-    chunk_x_ = chunk_y;
+    chunk_y_ = chunk_y;
 }
 
 void Chunk::SetCellLocal(int x, int y, int z, uint8_t val)
@@ -22,7 +22,7 @@ uint8_t Chunk::GetCellLocal(int x, int y, int z)
 	return cells[idx];
 }
 
-void Chunk::UpdateGeometryBuffers(ID3D11Device* device)
+void Chunk::UpdateGeometryBuffers(ID3D11Device* device, ID3D11DeviceContext* context)
 {
     // Create the buffers if they don't exist yet
     if (vbuffer_ == nullptr)
@@ -86,36 +86,59 @@ void Chunk::UpdateGeometryBuffers(ID3D11Device* device)
                 int cz = z;
 
                 // x-
-                if (GeoGen::cell_at(cx - 1, cy, cz) == 0) {
+                if (Map::cell_at(cx - 1, cy, cz) == 0) {
                     builder_.PushQuad(vec3(wx, wy, wz), vec3(wx, wy, wz + 1), vec3(wx, wy + 1, wz + 1), vec3(wx, wy + 1, wz), vec3_scale(side_col, 0.6f));
                 }
                 // x+
-                if (GeoGen::cell_at(cx + 1, cy, cz) == 0) {
+                if (Map::cell_at(cx + 1, cy, cz) == 0) {
                     builder_.PushQuad(vec3(wx + 1, wy, wz), vec3(wx + 1, wy + 1, wz), vec3(wx + 1, wy + 1, wz + 1), vec3(wx + 1, wy, wz + 1), vec3_scale(side_col, 0.9f));
                 }
                 // y+
-                if (GeoGen::cell_at(cx, cy + 1, cz) == 0) {
+                if (Map::cell_at(cx, cy + 1, cz) == 0) {
                     builder_.PushQuad(vec3(wx, wy, wz + 1), vec3(wx + 1, wy, wz + 1), vec3(wx + 1, wy + 1, wz + 1), vec3(wx, wy + 1, wz + 1), side_col);
                 }
                 // y-
-                if (GeoGen::cell_at(cx, cy - 1, cz) == 0) {
+                if (Map::cell_at(cx, cy - 1, cz) == 0) {
                     builder_.PushQuad(vec3(wx, wy, wz), vec3(wx, wy + 1, wz), vec3(wx + 1, wy + 1, wz), vec3(wx + 1, wy, wz), vec3_scale(side_col, 0.5f));
                 }
                 // z+
-                if (GeoGen::cell_at(cx, cy, cz + 1) == 0) {
+                if (Map::cell_at(cx, cy, cz + 1) == 0) {
                     builder_.PushQuad(vec3(wx, wy + 1, wz), vec3(wx, wy + 1, wz + 1), vec3(wx + 1, wy + 1, wz + 1), vec3(wx + 1, wy + 1, wz), top_col);
                 }
                 // z-
-                if (GeoGen::cell_at(cx, cy, cz - 1) == 0) {
+                if (Map::cell_at(cx, cy, cz - 1) == 0) {
                     builder_.PushQuad(vec3(wx, wy, wz), vec3(wx + 1, wy, wz), vec3(wx + 1, wy, wz + 1), vec3(wx, wy, wz + 1), side_col);
                 }
             }
         }
     }
+
+    // Update dx11 buffers
+    {
+        // Update vertex buffer
+        {
+            D3D11_MAPPED_SUBRESOURCE mapped_resource = {};
+            context->Map(vbuffer_, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
+            memcpy(mapped_resource.pData, builder_.vert.data(), builder_.vert.size() * sizeof(builder_.vert[0]));
+            context->Unmap(vbuffer_, 0);
+        }
+
+        // Update index buffer
+        {
+            D3D11_MAPPED_SUBRESOURCE mapped_resource = {};
+            context->Map(ibuffer_, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
+            memcpy(mapped_resource.pData, builder_.ind.data(), builder_.ind.size() * sizeof(builder_.ind[0]));
+            context->Unmap(ibuffer_, 0);
+        }
+    }
 }
 
-void Chunk::Render(ID3D11DeviceContext* context)
+void Chunk::Render(ID3D11Device* device, ID3D11DeviceContext* context)
 {
+    if (vbuffer_ == nullptr) {
+        UpdateGeometryBuffers(device, context);
+    }
+
     UINT stride = sizeof(struct Vertex);
     UINT offset = 0;
     context->IASetVertexBuffers(0, 1, &vbuffer_, &stride, &offset);

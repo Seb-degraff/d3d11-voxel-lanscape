@@ -22,7 +22,7 @@
 #include "types.h"
 #include "Input.h"
 #include "GeometryBuilder.h"
-#include "GeometryGenerator.h"
+#include "Map.h"
 #include "ParticleSystem.h"
 #include "Chunk.h"
 
@@ -252,7 +252,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previnstance, LPSTR cmdline, in
 
     geom.PushQuad(a, b, c, d, vec3(1.f,0.2f,0.2f));*/
 
-    GeoGen::GenerateTerrain();
+    Map::GenerateTerrain();
     
     {
         vec3_t grass_light = vec3(0.1f, 0.9f, 0.1f);
@@ -261,10 +261,10 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previnstance, LPSTR cmdline, in
         vec3_t stone_col = vec3(120.f / 256, 120.f / 256, 120.f / 256);
         vec3_t water_col = vec3(100.f / 256, 110.f / 256, 220.f / 256);
 
-        for (int chunk_y = 0; chunk_y < GeoGen::max_chunks_y; chunk_y++) {
-            for (int chunk_x = 0; chunk_x < GeoGen::max_chunks_x; chunk_x++) {
-                Chunk* chunk = GeoGen::chunks[chunk_x + chunk_y * GeoGen::max_chunks_x];
-                chunk->UpdateGeometryBuffers(device);
+        for (int chunk_y = 0; chunk_y < Map::max_chunks_y; chunk_y++) {
+            for (int chunk_x = 0; chunk_x < Map::max_chunks_x; chunk_x++) {
+                /*Chunk* chunk = Map::chunks[chunk_x + chunk_yMap::chunks[chunk_x + chunk_y * Map::max_chunks_x];
+                chunk->UpdateGeometryBuffers(device, context);*/
             }
         }
     }
@@ -793,10 +793,27 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previnstance, LPSTR cmdline, in
             context->OMSetDepthStencilState(depthState, 0);
             context->OMSetRenderTargets(1, &rtView, dsView);
 
-            for (int chunk_y = 0; chunk_y < GeoGen::max_chunks_y; chunk_y++) {
-                for (int chunk_x = 0; chunk_x < GeoGen::max_chunks_x; chunk_x++) {
-                    Chunk* chunk = GeoGen::chunks[chunk_x + chunk_y * GeoGen::max_chunks_x];
-                    chunk->Render(context);
+            int player_chunk_x = floorl(pos.x / Chunk::sx);
+            int player_chunk_y = floorl(pos.z / Chunk::sy);
+
+            for (int chunk_y = 0; chunk_y < Map::max_chunks_y; chunk_y++) {
+                for (int chunk_x = 0; chunk_x < Map::max_chunks_x; chunk_x++) {
+                    int dx = abs(player_chunk_x - chunk_x);
+                    int dy = abs(player_chunk_y - chunk_y);
+                    Chunk* chunk = Map::chunks[chunk_x + chunk_y * Map::max_chunks_x];
+                    if ((dx * dx) + (dy * dy) > 8 * 8) {
+                        //if (chunk) {   
+                        //    chunk->dirty_ = true;
+                        //    Map::chunks[chunk_x + chunk_y * Map::max_chunks_x] = nullptr;
+                        //    Map::free_chunks.push_back(chunk);
+                        //}
+                        continue;
+                    }
+                    //if (chunk == nullptr) {
+                    //    chunk = new Chunk(chunk_x, chunk_y);
+                    //    Map::chunks[chunk_x + chunk_y * Map::max_chunks_x] = chunk;
+                    //}
+                    chunk->Render(device, context);
                 }
             }
 
@@ -807,6 +824,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previnstance, LPSTR cmdline, in
             context->PSSetSamplers(0, 1, &sampler);
             context->PSSetShaderResources(0, 1, &textureView);
             context->PSSetShader(pshader, NULL, 0);
+
             context->OMSetDepthStencilState(depthStateTransparent, 0);
 
             particle_system2.pos_.x = pos.x;

@@ -21,7 +21,7 @@
     <ClCompile Include="GeometryBuilder.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="GeometryGenerator.cpp">
+    <ClCompile Include="Map.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Input.cpp">
@@ -47,7 +47,7 @@
     <ClInclude Include="Input.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="GeometryGenerator.h">
+    <ClInclude Include="Map.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="Noise.h">

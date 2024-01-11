@@ -12,6 +12,7 @@ class Chunk
 
 	int chunk_x_;
 	int chunk_y_;
+	bool dirty_;
 
 	uint8_t cells[sx * sy * sz];
 
@@ -22,6 +23,6 @@ class Chunk
 	Chunk(int chunk_x, int chunk_y);
 	void SetCellLocal(int x, int y, int z, uint8_t val);
 	uint8_t GetCellLocal(int x, int y, int z);
-	void UpdateGeometryBuffers(ID3D11Device* device);
-	void Render(ID3D11DeviceContext* context);
+	void UpdateGeometryBuffers(ID3D11Device* device, ID3D11DeviceContext* context);
+	void Render(ID3D11Device* device, ID3D11DeviceContext* context);
 };
