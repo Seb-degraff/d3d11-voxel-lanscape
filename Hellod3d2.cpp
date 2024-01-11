@@ -354,7 +354,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previnstance, LPSTR cmdline, in
             "    PS_INPUT output;                                       \n"
             "    output.pos = mul(uTransform, float4(input.pos, 1));    \n"
             "    output.uv = input.uv;                                  \n"
-            "    output.color = input.color;   \n"
+            "    output.color = lerp(input.color, float4(0,0,0,1), 0.1);   \n"
             "    return output;                                         \n"
             "}                                                          \n"
             "                                                           \n"
@@ -428,8 +428,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previnstance, LPSTR cmdline, in
         UINT width = 2;
         UINT height = 2;*/
 
-        D3D11_TEXTURE2D_DESC desc =
-        {
+        D3D11_TEXTURE2D_DESC desc = {
             .Width = (UINT) sx,
             .Height = (UINT) sy,
             .MipLevels = 1,
@@ -452,7 +451,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previnstance, LPSTR cmdline, in
         texture->Release();
     }
 
-    ID3D11ShaderResourceView* textureView2;
+    ID3D11ShaderResourceView* texture_block;
     {
         // checkerboard texture, with 50% transparency on black colors
         unsigned int pixels[] =
@@ -483,7 +482,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previnstance, LPSTR cmdline, in
 
         ID3D11Texture2D* texture;
         device->CreateTexture2D(&desc, &data, &texture);
-        device->CreateShaderResourceView((ID3D11Resource*)texture, NULL, &textureView2);
+        device->CreateShaderResourceView((ID3D11Resource*)texture, NULL, &texture_block);
         texture->Release();
     }
 
@@ -771,7 +770,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previnstance, LPSTR cmdline, in
 
             // Pixel Shader
             context->PSSetSamplers(0, 1, &sampler);
-            context->PSSetShaderResources(0, 1, &textureView2);
+            context->PSSetShaderResources(0, 1, &texture_block);
             context->PSSetShader(pshader, NULL, 0);
 
             // Output Merger

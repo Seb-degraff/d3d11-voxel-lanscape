@@ -17,9 +17,7 @@ void GeometryBuilder::PushQuad(vec3_t a, vec3_t b, vec3_t c, vec3_t d, vec3_t co
     ind.push_back(first_index + 3);
 }
 
-
 void GeometryBuilder::PushQuad(vec3_t a, vec3_t b, vec3_t c, vec3_t d, vec3_t col)
 {
     GeometryBuilder::PushQuad(a, b, c, d, col, 1.f);
 }
-

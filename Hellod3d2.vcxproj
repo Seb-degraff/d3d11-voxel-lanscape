@@ -186,6 +186,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Chunk.cpp" />
     <ClCompile Include="GeometryBuilder.cpp" />
     <ClCompile Include="GeometryGenerator.cpp" />
     <ClCompile Include="Hellod3d2.cpp" />
@@ -194,6 +195,7 @@
     <ClCompile Include="ParticleSystem.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Chunk.h" />
     <ClInclude Include="GeometryBuilder.h" />
     <ClInclude Include="GeometryGenerator.h" />
     <ClInclude Include="Input.h" />
