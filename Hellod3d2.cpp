@@ -24,6 +24,7 @@
 #include "GeometryBuilder.h"
 #include "GeometryGenerator.h"
 #include "ParticleSystem.h"
+#include "Chunk.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -252,7 +253,21 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previnstance, LPSTR cmdline, in
     geom.PushQuad(a, b, c, d, vec3(1.f,0.2f,0.2f));*/
 
     GeoGen::GenerateTerrain();
-    GeoGen::Generate(&geom);
+    
+    {
+        vec3_t grass_light = vec3(0.1f, 0.9f, 0.1f);
+        vec3_t grass_dark = vec3(0.05f, 0.8f, 0.05f);
+        vec3_t dirt_col = vec3(115.f / 256, 63.f / 256, 23.f / 256);
+        vec3_t stone_col = vec3(120.f / 256, 120.f / 256, 120.f / 256);
+        vec3_t water_col = vec3(100.f / 256, 110.f / 256, 220.f / 256);
+
+        for (int chunk_y = 0; chunk_y < GeoGen::max_chunks_y; chunk_y++) {
+            for (int chunk_x = 0; chunk_x < GeoGen::max_chunks_x; chunk_x++) {
+                Chunk* chunk = GeoGen::chunks[chunk_x + chunk_y * GeoGen::max_chunks_x];
+                chunk->UpdateGeometryBuffers(device);
+            }
+        }
+    }
 
     ParticleSystem particle_system = ParticleSystem(device, 100);
     ParticleSystem particle_system2 = ParticleSystem(device, 6000);
@@ -262,7 +277,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previnstance, LPSTR cmdline, in
     particle_system2.lifetime_ = 12.0f;
     particle_system2.spawn_rate_ = 0.01f;
 
-    ID3D11Buffer* vbuffer;
+    /*ID3D11Buffer* vbuffer;
     {
         D3D11_BUFFER_DESC desc =
         {
@@ -280,14 +295,14 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previnstance, LPSTR cmdline, in
     {
         D3D11_BUFFER_DESC desc =
         {
-            .ByteWidth = static_cast<UINT>(geom.ind.size() * sizeof(geom.ind[0])),
+            .ByteWidth = static_cast<UINT>(geom.ind.size() * sizeof(uint32_t)),
             .Usage = D3D11_USAGE_IMMUTABLE,
             .BindFlags = D3D11_BIND_INDEX_BUFFER,
         };
 
         D3D11_SUBRESOURCE_DATA initial = { .pSysMem = geom.ind.data() };
         device->CreateBuffer(&desc, &initial, &ibuffer);
-    }
+    }*/
 
     // vertex & pixel shaders for drawing triangle, plus input layout for vertex input
     ID3D11InputLayout* layout;
@@ -778,13 +793,15 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previnstance, LPSTR cmdline, in
             context->OMSetDepthStencilState(depthState, 0);
             context->OMSetRenderTargets(1, &rtView, dsView);
 
-            UINT stride = sizeof(struct Vertex);
-            UINT offset = 0;
-            context->IASetVertexBuffers(0, 1, &vbuffer, &stride, &offset);
-            context->IASetIndexBuffer(ibuffer, DXGI_FORMAT_R32_UINT, 0);
+            for (int chunk_y = 0; chunk_y < GeoGen::max_chunks_y; chunk_y++) {
+                for (int chunk_x = 0; chunk_x < GeoGen::max_chunks_x; chunk_x++) {
+                    Chunk* chunk = GeoGen::chunks[chunk_x + chunk_y * GeoGen::max_chunks_x];
+                    chunk->Render(context);
+                }
+            }
 
             // draw
-            context->DrawIndexed(geom.ind.size(), 0, 0);
+            //context->DrawIndexed(geom.ind.size(), 0, 0);
 
             // Pixel Shader
             context->PSSetSamplers(0, 1, &sampler);
