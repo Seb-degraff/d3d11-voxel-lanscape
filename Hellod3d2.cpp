@@ -1,7 +1,7 @@
 // example how to set up D3D11 rendering on Windows in C
 
 #include <stdint.h>
-
+#include <random>
 #define COBJMACROS
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -23,6 +23,10 @@
 #include "Input.h"
 #include "GeometryBuilder.h"
 #include "GeometryGenerator.h"
+#include "ParticleSystem.h"
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
 // replace this with your favorite Assert() implementation
 #include <intrin.h>
@@ -250,6 +254,14 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previnstance, LPSTR cmdline, in
     GeoGen::GenerateTerrain();
     GeoGen::Generate(&geom);
 
+    ParticleSystem particle_system = ParticleSystem(device, 100);
+    ParticleSystem particle_system2 = ParticleSystem(device, 6000);
+    particle_system2.pos_ = vec3(3, 19, 0);
+    particle_system2.target_velocity_ = vec3(0, -1, 0);
+    particle_system2.spawn_volume_size_ = vec3(40, 0, 40);
+    particle_system2.lifetime_ = 12.0f;
+    particle_system2.spawn_rate_ = 0.01f;
+
     ID3D11Buffer* vbuffer;
     {
         D3D11_BUFFER_DESC desc =
@@ -283,11 +295,10 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previnstance, LPSTR cmdline, in
     ID3D11PixelShader* pshader;
     {
         // these must match vertex shader input layout (VS_INPUT in vertex shader source below)
-        D3D11_INPUT_ELEMENT_DESC desc[] =
-        {
+        D3D11_INPUT_ELEMENT_DESC desc[] = {
             { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(struct Vertex, position), D3D11_INPUT_PER_VERTEX_DATA, 0 },
             { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,    0, offsetof(struct Vertex, uv),       D3D11_INPUT_PER_VERTEX_DATA, 0 },
-            { "COLOR",    0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(struct Vertex, color),    D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "COLOR",    0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, offsetof(struct Vertex, color),    D3D11_INPUT_PER_VERTEX_DATA, 0 },
         };
 
 #if 0
@@ -319,7 +330,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previnstance, LPSTR cmdline, in
             "{                                                          \n"
             "     float3 pos   : POSITION;                              \n" // these names must match D3D11_INPUT_ELEMENT_DESC array
             "     float2 uv    : TEXCOORD;                              \n"
-            "     float3 color : COLOR;                                 \n"
+            "     float4 color : COLOR;                                 \n"
             "};                                                         \n"
             "                                                           \n"
             "struct PS_INPUT                                            \n"
@@ -343,7 +354,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previnstance, LPSTR cmdline, in
             "    PS_INPUT output;                                       \n"
             "    output.pos = mul(uTransform, float4(input.pos, 1));    \n"
             "    output.uv = input.uv;                                  \n"
-            "    output.color = float4(input.color, 1);   \n"
+            "    output.color = input.color;   \n"
             "    return output;                                         \n"
             "}                                                          \n"
             "                                                           \n"
@@ -405,6 +416,44 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previnstance, LPSTR cmdline, in
 
     ID3D11ShaderResourceView* textureView;
     {
+        int sx, sy, n;
+        unsigned char* pixels = stbi_load("./particle_fire.png", &sx, &sy, &n, 4);
+
+        // checkerboard texture, with 50% transparency on black colors
+        /*unsigned int pixels[] =
+        {
+            0xffd0d0d0, 0xffffffff,
+            0xffe0e0e0, 0xffe0e0e0,
+        };
+        UINT width = 2;
+        UINT height = 2;*/
+
+        D3D11_TEXTURE2D_DESC desc =
+        {
+            .Width = (UINT) sx,
+            .Height = (UINT) sy,
+            .MipLevels = 1,
+            .ArraySize = 1,
+            .Format = DXGI_FORMAT_R8G8B8A8_UNORM,
+            .SampleDesc = { 1, 0 },
+            .Usage = D3D11_USAGE_IMMUTABLE,
+            .BindFlags = D3D11_BIND_SHADER_RESOURCE,
+        };
+
+        D3D11_SUBRESOURCE_DATA data =
+        {
+            .pSysMem = pixels,
+            .SysMemPitch = sx * sizeof(unsigned int),
+        };
+
+        ID3D11Texture2D* texture;
+        device->CreateTexture2D(&desc, &data, &texture);
+        device->CreateShaderResourceView((ID3D11Resource*)texture, NULL, &textureView);
+        texture->Release();
+    }
+
+    ID3D11ShaderResourceView* textureView2;
+    {
         // checkerboard texture, with 50% transparency on black colors
         unsigned int pixels[] =
         {
@@ -416,8 +465,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previnstance, LPSTR cmdline, in
 
         D3D11_TEXTURE2D_DESC desc =
         {
-            .Width = width,
-            .Height = height,
+            .Width = (UINT) width,
+            .Height = (UINT) height,
             .MipLevels = 1,
             .ArraySize = 1,
             .Format = DXGI_FORMAT_R8G8B8A8_UNORM,
@@ -434,7 +483,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previnstance, LPSTR cmdline, in
 
         ID3D11Texture2D* texture;
         device->CreateTexture2D(&desc, &data, &texture);
-        device->CreateShaderResourceView((ID3D11Resource*)texture, NULL, &textureView);
+        device->CreateShaderResourceView((ID3D11Resource*)texture, NULL, &textureView2);
         texture->Release();
     }
 
@@ -459,7 +508,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previnstance, LPSTR cmdline, in
         // enable alpha blending
         D3D11_BLEND_DESC desc = {};
         desc.RenderTarget[0] = {
-            .BlendEnable = FALSE,
+            .BlendEnable = TRUE,
             .SrcBlend = D3D11_BLEND_SRC_ALPHA,
             .DestBlend = D3D11_BLEND_INV_SRC_ALPHA,
             .BlendOp = D3D11_BLEND_OP_ADD,
@@ -497,6 +546,23 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previnstance, LPSTR cmdline, in
             // .BackFace = ...
         };
         device->CreateDepthStencilState(&desc, &depthState);
+    }
+
+    ID3D11DepthStencilState* depthStateTransparent;
+    {
+        // disable depth & stencil test
+        D3D11_DEPTH_STENCIL_DESC desc =
+        {
+            .DepthEnable = TRUE,
+            .DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO,
+            .DepthFunc = D3D11_COMPARISON_LESS,
+            .StencilEnable = FALSE,
+            .StencilReadMask = D3D11_DEFAULT_STENCIL_READ_MASK,
+            .StencilWriteMask = D3D11_DEFAULT_STENCIL_WRITE_MASK,
+            // .FrontFace = ... 
+            // .BackFace = ...
+        };
+        device->CreateDepthStencilState(&desc, &depthStateTransparent);
     }
 
     ID3D11RenderTargetView* rtView = NULL;
@@ -595,20 +661,25 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previnstance, LPSTR cmdline, in
             float delta = (float)((double)(c2.QuadPart - c1.QuadPart) / freq.QuadPart);
             c1 = c2;
 
-            /*geom.ind.clear();
-            geom.vert.clear();
+            if (Input::state.jump) {
+                static float hey = 0;
+                particle_system.Spawn();
+                hey += 1.0f;
+                //geom.ind.clear();
+                //geom.vert.clear();
 
-            static float t = 0;
-            t += delta;
-            geom.PushQuad(a, b, c, d, vec3(0.2f + , 0.9f, 0.2f));*/
+                //static float t = 0;
+                //t += delta;
+                //geom.PushQuad(a, b, c, d, vec3(0.2f, 0.9f, 0.2f));
 
-            // Update vertex buffer
-            {
-                D3D11_MAPPED_SUBRESOURCE mapped_resource;
-                ZeroMemory(&mapped_resource, sizeof(D3D11_MAPPED_SUBRESOURCE));
-                context->Map(vbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
-                memcpy(mapped_resource.pData, geom.vert.data(), geom.vert.size() * sizeof(geom.vert[0]));
-                context->Unmap(vbuffer, 0);
+                //// Update vertex buffer
+                //{
+                //    D3D11_MAPPED_SUBRESOURCE mapped_resource = {};
+                //    context->Map(vbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
+                //    memcpy(mapped_resource.pData, particle_system.builder_.vert.data(), particle_system.builder_.vert.size() * sizeof(geom.vert[0]));
+                //    context->Unmap(vbuffer, 0);
+                //}
+
             }
 
             // output viewport covering all client area of window
@@ -627,6 +698,9 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previnstance, LPSTR cmdline, in
             context->ClearRenderTargetView(rtView, color);
             context->ClearDepthStencilView(dsView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.f, 0);
 
+            static vec3_t pos = {0, 0, -2};
+            static float rot_h = 0.f;
+            static float rot_v = 0.f;
             {
                 angle += delta * 2.0f * (float)M_PI / 20.0f; // full rotation in 20 seconds
                 angle = fmodf(angle, 2.0f * (float)M_PI);
@@ -634,9 +708,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previnstance, LPSTR cmdline, in
                 static float time = 0;
                 time += 1.f / 60.f;  
 
-                static vec3_t pos = {0, 16, -2};
-                static float rot_h = 0.f;
-                static float rot_v = 0.f;
 
                 rot_h += Input::state.mouse_delta_x * 0.01f;
                 rot_v += Input::state.mouse_delta_y * 0.01f;
@@ -689,10 +760,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previnstance, LPSTR cmdline, in
             // Input Assembler
             context->IASetInputLayout(layout);
             context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-            UINT stride = sizeof(struct Vertex);
-            UINT offset = 0;
-            context->IASetVertexBuffers(0, 1, &vbuffer, &stride, &offset);
-            context->IASetIndexBuffer(ibuffer, DXGI_FORMAT_R32_UINT, 0);
 
             // Vertex Shader
             context->VSSetConstantBuffers(0, 1, &ubuffer);
@@ -704,7 +771,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previnstance, LPSTR cmdline, in
 
             // Pixel Shader
             context->PSSetSamplers(0, 1, &sampler);
-            context->PSSetShaderResources(0, 1, &textureView);
+            context->PSSetShaderResources(0, 1, &textureView2);
             context->PSSetShader(pshader, NULL, 0);
 
             // Output Merger
@@ -712,8 +779,25 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previnstance, LPSTR cmdline, in
             context->OMSetDepthStencilState(depthState, 0);
             context->OMSetRenderTargets(1, &rtView, dsView);
 
-            // draw 3 vertices
+            UINT stride = sizeof(struct Vertex);
+            UINT offset = 0;
+            context->IASetVertexBuffers(0, 1, &vbuffer, &stride, &offset);
+            context->IASetIndexBuffer(ibuffer, DXGI_FORMAT_R32_UINT, 0);
+
+            // draw
             context->DrawIndexed(geom.ind.size(), 0, 0);
+
+            // Pixel Shader
+            context->PSSetSamplers(0, 1, &sampler);
+            context->PSSetShaderResources(0, 1, &textureView);
+            context->PSSetShader(pshader, NULL, 0);
+            context->OMSetDepthStencilState(depthStateTransparent, 0);
+
+            particle_system2.pos_.x = pos.x;
+            particle_system2.pos_.z = pos.z;
+
+            particle_system.UpdateAndRender(context, delta, vec3(sinf(-rot_h), 0, -cosf(-rot_h)));
+            particle_system2.UpdateAndRender(context, delta, vec3(sinf(-rot_h), 0, -cosf(-rot_h)));
         }
 
         // change to FALSE to disable vsync
@@ -731,5 +815,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previnstance, LPSTR cmdline, in
         {
             FatalError("Failed to present swap chain! Device lost?");
         }
+
+        Input::state.jump = false; // huge hack, need to reset before polling events.
     }
 }

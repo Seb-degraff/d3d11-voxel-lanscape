@@ -48,6 +48,11 @@ namespace Input
 					state.e = true;
 					return true;
 				}
+				// hardcode the jump key for now
+				if (wparam == VK_SPACE) {
+					state.jump = true;
+					return true;
+				}
 				break;
 			}
 			case WM_KEYUP: {

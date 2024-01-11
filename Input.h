@@ -14,6 +14,7 @@ namespace Input {
 		bool q;
 		float mouse_delta_x;
 		float mouse_delta_y;
+		bool jump;
 	};
 
 	extern State state;

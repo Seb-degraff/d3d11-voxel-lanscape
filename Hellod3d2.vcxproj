@@ -191,12 +191,14 @@
     <ClCompile Include="Hellod3d2.cpp" />
     <ClCompile Include="Input.cpp" />
     <ClCompile Include="Noise.cpp" />
+    <ClCompile Include="ParticleSystem.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="GeometryBuilder.h" />
     <ClInclude Include="GeometryGenerator.h" />
     <ClInclude Include="Input.h" />
     <ClInclude Include="Noise.h" />
+    <ClInclude Include="ParticleSystem.h" />
     <ClInclude Include="types.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

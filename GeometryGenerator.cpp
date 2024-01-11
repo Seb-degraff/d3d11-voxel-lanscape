@@ -5,7 +5,7 @@
 
 namespace GeoGen
 {
-    constexpr int chunk_width = 16;
+    constexpr int chunk_width = 32*4;
     constexpr int chunk_height = 32;
 
     uint8_t cells[chunk_width * chunk_width * chunk_height];
